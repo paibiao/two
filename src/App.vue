@@ -1,12 +1,20 @@
 <template>
   <div id="cesiumContainer"></div>
-  <div id="showDetailInfo" v-show="detailIsShow">
+  <div id="showHighPolygonDetailInfo" v-show="highPolygonDetailIsShow">
     <el-card style="width: 75vw; height: 80vh; padding: 20px">
-      <span class="close">X</span>
+      <span class="close" @click="close" style="cursor: pointer">X</span>
       <el-table :data="tableData" style="width: 100%">
-        <el-table-column prop="date" label="Date" />
         <el-table-column prop="name" label="Name" />
-        <el-table-column prop="address" label="Address" />
+        <el-table-column prop="peopleNum" label="peopleNum" />
+      </el-table>
+    </el-card>
+  </div>
+  <div id="showLowerPolygonDetailInfo" v-show="lowerPolygonDetailIsShow">
+    <el-card style="width: 75vw; height: 80vh; padding: 20px">
+      <span class="close" @click="close" style="cursor: pointer">X</span>
+      <el-table :data="tableData" style="width: 100%">
+        <el-table-column prop="name" label="Name" />
+        <el-table-column prop="owner" label="owner" />
       </el-table>
     </el-card>
   </div>
@@ -19,32 +27,17 @@ import { onMounted, ref } from "vue";
 import { load3dtiles, update3dtiles } from "/src/utils/load3D.js";
 import build from "/src/assets/build.json";
 let viewer, handle, lastPick;
-let detailIsShow = ref(false);
-const tableData = ref([
-  {
-    date: "2016-05-03",
-    name: "Tom",
-    address: "No. 189, Grove St, Los Angeles",
-  },
-  {
-    date: "2016-05-02",
-    name: "Tom",
-    address: "No. 189, Grove St, Los Angeles",
-  },
-  {
-    date: "2016-05-04",
-    name: "Tom",
-    address: "No. 189, Grove St, Los Angeles",
-  },
-  {
-    date: "2016-05-01",
-    name: "Tom",
-    address: "No. 189, Grove St, Los Angeles",
-  },
-]);
+let highPolygonDetailIsShow = ref(false);
+let lowerPolygonDetailIsShow = ref(false);
+const tableData = ref([]);
 
 Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5ZWZlNmFmNS0yNTkxLTQ2NzEtYjk4NS1lNGY5NWM1OTc5MmYiLCJpZCI6MjA1MTk1LCJpYXQiOjE3MTE2NzU4OTJ9.O9J1G_tirf33A-GKVOhxk1h9lWH08IZTnMOf-y8XS_U";
+
+function close() {
+  highPolygonDetailIsShow.value = false;
+  lowerPolygonDetailIsShow.value = false;
+}
 
 function delAll(viewer) {
   viewer.entities.removeAll();
@@ -80,6 +73,7 @@ function showDetailLowerPolygon(viewer) {
   childArr.forEach((item) => {
     viewer.entities.add({
       id: item.name,
+      owner: item.owner,
       position: Cesium.Cartesian3.fromDegrees(...item.position),
       label: {
         text: item.name,
@@ -90,6 +84,23 @@ function showDetailLowerPolygon(viewer) {
       },
     });
   });
+  //生成点击事件
+  buildLowerPolygonClickHandler();
+}
+
+function buildLowerPolygonClickHandler() {
+  handle.setInputAction((event) => {
+    let pick = viewer.scene.pick(event.position);
+    if (pick && pick.id) {
+      console.log(pick.id);
+      lowerPolygonDetailIsShow.value = true;
+      tableData.value = [];
+      tableData.value.push({
+        name: pick.id.id,
+        owner: pick.id.owner,
+      });
+    }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
 
 function showDetailHighPolygon(viewer) {
@@ -113,6 +124,7 @@ function showDetailHighPolygon(viewer) {
   childArr.forEach((item) => {
     viewer.entities.add({
       id: item.name,
+      peopleNum: item.peopleNum,
       position: Cesium.Cartesian3.fromDegrees(...item.position),
       label: {
         text: item.name,
@@ -123,6 +135,22 @@ function showDetailHighPolygon(viewer) {
       },
     });
   });
+  //生成点击事件
+  buildHighPolygonClickHandler();
+}
+
+function buildHighPolygonClickHandler() {
+  handle.setInputAction((event) => {
+    let pick = viewer.scene.pick(event.position);
+    if (pick && pick.id) {
+      highPolygonDetailIsShow.value = true;
+      tableData.value = [];
+      tableData.value.push({
+        name: pick.id.id,
+        peopleNum: pick.id.peopleNum,
+      });
+    }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
 
 function setMouseClickEvent(viewer) {
@@ -265,7 +293,8 @@ onMounted(() => {
   height: 100vh;
   overflow: hidden;
 }
-#showDetailInfo {
+#showLowerPolygonDetailInfo,
+#showHighPolygonDetailInfo {
   position: fixed;
   left: 50%;
   top: 50%;
